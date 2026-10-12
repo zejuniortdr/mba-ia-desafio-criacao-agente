@@ -6,6 +6,7 @@ Subir: uv run --env-file .env uvicorn --factory aurora.api:criar_api --port 8000
 import os
 
 from fastapi import FastAPI, HTTPException
+from google.adk.agents.run_config import RunConfig, ToolThreadPoolConfig
 from google.adk.events import Event
 from google.adk.models.base_llm import BaseLlm
 from google.adk.runners import Runner
@@ -18,6 +19,8 @@ from aurora.agents import criar_app
 
 USER_ID = "morador"  # ponytail: o morador é identificado pelo apartamento no state; user_id é fixo.
 CONFIRMACAO = "adk_request_confirmation"
+# Tools síncronas (SQLite) rodam num thread pool, sem bloquear o event loop.
+RUN_CONFIG = RunConfig(tool_thread_pool_config=ToolThreadPoolConfig())
 
 
 class NovaSessao(BaseModel):
@@ -67,7 +70,9 @@ def criar_api(model: str | BaseLlm | None = None, sessoes_db: str | None = None)
 
     async def executar(session_id: str, content: types.Content) -> dict:
         textos = []
-        async for ev in runner.run_async(user_id=USER_ID, session_id=session_id, new_message=content):
+        async for ev in runner.run_async(
+            user_id=USER_ID, session_id=session_id, new_message=content, run_config=RUN_CONFIG
+        ):
             if ev.author != "user" and ev.is_final_response() and ev.content:
                 textos += [p.text for p in ev.content.parts or [] if p.text and not p.thought]
         session = await sessao_ou_404(session_id)

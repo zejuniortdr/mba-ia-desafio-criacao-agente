@@ -5,7 +5,7 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from aurora import api, tools
+from aurora import api, db, tools
 from tests.fake_llm import FakeLlm
 
 
@@ -46,6 +46,21 @@ def eventos(client, sid):
     r = client.get(f"/sessoes/{sid}/eventos")
     assert r.status_code == 200
     return r.json()
+
+
+def test_tools_rodam_fora_do_event_loop(client, monkeypatch):
+    original, loops = db.listar_reservas, []
+
+    def espiao(apto):
+        try:
+            loops.append(asyncio.get_running_loop())
+        except RuntimeError:
+            loops.append(None)
+        return original(apto)
+
+    monkeypatch.setattr(db, "listar_reservas", espiao)
+    msg(client, sessao(client), "minhas-reservas")
+    assert loops == [None]
 
 
 def test_rotas_de_verificacao(client):
