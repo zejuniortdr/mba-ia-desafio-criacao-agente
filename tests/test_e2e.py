@@ -8,13 +8,44 @@ import re
 import httpx
 import pytest
 from fastapi.testclient import TestClient
+from google.adk.models.base_llm import BaseLlm
+from pydantic import Field
 
 from aurora import api, tools
+from aurora.agents import modelo_padrao
 
 pytestmark = [
     pytest.mark.e2e,
     pytest.mark.skipif(not os.environ.get("GOOGLE_API_KEY"), reason="sem GOOGLE_API_KEY"),
 ]
+
+
+class Medidor(BaseLlm):
+    """Envolve o modelo real e soma o consumo de todas as chamadas, inclusive as do AgentTool."""
+
+    interno: BaseLlm
+    totais: dict = Field(default_factory=dict)
+
+    async def generate_content_async(self, llm_request, stream=False):
+        t = self.totais
+        t["chamadas"] = t.get("chamadas", 0) + 1
+        async for r in self.interno.generate_content_async(llm_request, stream):
+            if u := r.usage_metadata:
+                for campo, chave in [
+                    ("prompt_token_count", "entrada"),
+                    ("candidates_token_count", "saida"),
+                    ("thoughts_token_count", "raciocinio"),
+                ]:
+                    t[chave] = t.get(chave, 0) + (getattr(u, campo) or 0)
+            yield r
+
+
+@pytest.fixture
+def medidor(request):
+    interno = modelo_padrao()
+    m = Medidor(model=interno.model, interno=interno, totais={})
+    yield m
+    print(f"\n[consumo] {request.node.name}: {m.totais}")
 
 
 def _msg(c, sid, texto):
@@ -41,9 +72,9 @@ def _reservas(c, apto, area, data):
     return [r for r in c.get(f"/apartamentos/{apto}/reservas").json() if r["area"] == area and r["data"] == data]
 
 
-def test_fluxo_do_avaliador(tmp_path):
+def test_fluxo_do_avaliador(tmp_path, medidor):
     db_sessoes = str(tmp_path / "sessoes.db")
-    c = TestClient(api.criar_api(sessoes_db=db_sessoes))
+    c = TestClient(api.criar_api(model=medidor, sessoes_db=db_sessoes))
     respostas = []
 
     # 1
@@ -113,7 +144,7 @@ def test_fluxo_do_avaliador(tmp_path):
             assert not any(linha[:60] in dump for linha in texto.splitlines()[2:] if len(linha) > 60)
     n = len(c.get(f"/sessoes/{s1}/eventos").json())
     # 13
-    c = TestClient(api.criar_api(sessoes_db=db_sessoes))
+    c = TestClient(api.criar_api(model=medidor, sessoes_db=db_sessoes))
     assert len(c.get(f"/sessoes/{s1}/eventos").json()) == n
     _msg(c, s1, "Quais são as minhas reservas agora?")
     assert len(c.get(f"/sessoes/{s1}/eventos").json()) > n
@@ -123,8 +154,8 @@ def test_fluxo_do_avaliador(tmp_path):
     assert [x["codigo"] for x in c.get("/apartamentos/302/reservas").json()] == ["RSV-4821"]
 
 
-async def test_disputa_final(tmp_path):
-    app = api.criar_api(sessoes_db=str(tmp_path / "sessoes.db"))
+async def test_disputa_final(tmp_path, medidor):
+    app = api.criar_api(model=medidor, sessoes_db=str(tmp_path / "sessoes.db"))
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://t", timeout=120) as c:
         pend = []
         for apto in ("101", "201"):
