@@ -4,8 +4,10 @@ import os
 
 from google.adk.agents import LlmAgent
 from google.adk.apps import App, ResumabilityConfig
+from google.adk.models import FallbackModel, Gemini
 from google.adk.models.base_llm import BaseLlm
 from google.adk.tools import AgentTool, FunctionTool
+from google.genai import types
 
 from aurora import tools
 
@@ -22,8 +24,19 @@ CONFIRMACAO = (
 )
 
 
+def modelo_padrao() -> FallbackModel:
+    """Modelo primário com retry; se ele seguir indisponível (429/5xx), o fallback assume a chamada."""
+    retry = types.HttpRetryOptions(attempts=4, initial_delay=2, max_delay=20)
+    return FallbackModel(
+        models=[
+            Gemini(model=os.environ.get("GEMINI_MODEL") or "gemini-3.8-flash", retry_options=retry),
+            Gemini(model=os.environ.get("GEMINI_MODEL_FALLBACK") or "gemini-3.5-flash", retry_options=retry),
+        ]
+    )
+
+
 def criar_app(model: str | BaseLlm | None = None) -> App:
-    model = model or os.environ.get("GEMINI_MODEL") or "gemini-2.5-flash"
+    model = model or modelo_padrao()
 
     reservas = LlmAgent(
         name="reservas",

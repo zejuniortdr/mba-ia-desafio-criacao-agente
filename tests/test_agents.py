@@ -1,9 +1,10 @@
 import inspect
 
+from google.adk.models import FallbackModel, Gemini
 from google.adk.tools import AgentTool, FunctionTool
 
 from aurora import tools
-from aurora.agents import criar_app
+from aurora.agents import criar_app, modelo_padrao
 from tests.fake_llm import FakeLlm
 
 APP = criar_app(FakeLlm())
@@ -42,6 +43,21 @@ def test_principal_nao_recebe_regulamento_nas_instrucoes():
         corpo = texto.splitlines()[2]
         assert corpo[:60] not in RAIZ.instruction
     assert list(_funcoes(RAIZ)) == []
+
+
+def test_modelo_padrao_tem_retry_e_fallback(monkeypatch):
+    monkeypatch.delenv("GEMINI_MODEL", raising=False)
+    monkeypatch.delenv("GEMINI_MODEL_FALLBACK", raising=False)
+    modelo = modelo_padrao()
+    assert isinstance(modelo, FallbackModel)
+    assert [m.model for m in modelo.models] == ["gemini-3.8-flash", "gemini-3.5-flash"]
+    assert all(isinstance(m, Gemini) and m.retry_options.attempts > 1 for m in modelo.models)
+
+
+def test_modelos_vem_do_ambiente(monkeypatch):
+    monkeypatch.setenv("GEMINI_MODEL", "primario")
+    monkeypatch.setenv("GEMINI_MODEL_FALLBACK", "reserva")
+    assert [m.model for m in modelo_padrao().models] == ["primario", "reserva"]
 
 
 def test_tools_que_cobram_ou_liberam_acesso_pedem_confirmacao():

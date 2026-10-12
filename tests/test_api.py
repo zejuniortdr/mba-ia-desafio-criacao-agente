@@ -4,6 +4,8 @@ import json
 import httpx
 import pytest
 from fastapi.testclient import TestClient
+from google.adk.models import FallbackModel
+from google.genai.errors import ServerError
 
 from aurora import api, db, tools
 from tests.fake_llm import FakeLlm
@@ -47,6 +49,20 @@ def eventos(client, sid):
     r = client.get(f"/sessoes/{sid}/eventos")
     assert r.status_code == 200
     return r.json()
+
+
+class Indisponivel(FakeLlm):
+    model: str = "indisponivel"
+
+    async def generate_content_async(self, llm_request, stream=False):
+        raise ServerError(503, {"error": {"code": 503, "message": "high demand", "status": "UNAVAILABLE"}})
+        yield  # pragma: no cover
+
+
+def test_modelo_indisponivel_cai_no_fallback(sessoes_db):
+    c = TestClient(api.criar_api(model=FallbackModel(models=[Indisponivel(), FakeLlm()]), sessoes_db=sessoes_db))
+    r = msg(c, sessao(c), "reservar quadra 2030-04-06")
+    assert r["resposta"] and len(reservas(c, "101", "quadra", "2030-04-06")) == 1
 
 
 def test_tools_rodam_fora_do_event_loop(client, monkeypatch):
