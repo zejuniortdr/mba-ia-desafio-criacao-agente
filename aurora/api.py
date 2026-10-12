@@ -42,7 +42,7 @@ def confirmacoes_pendentes(events: list[Event]) -> list[dict]:
     for ev in events:
         for fc in ev.get_function_calls():
             if fc.name == CONFIRMACAO:
-                pedidos[fc.id] = fc.args["originalFunctionCall"]
+                pedidos[fc.id] = (fc.args or {})["originalFunctionCall"]
         for fr in ev.get_function_responses():
             if fr.name == CONFIRMACAO:
                 respondidos.add(fr.id)

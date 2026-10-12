@@ -37,7 +37,8 @@ def confirmar(client, sid, cid, ok=True):
 
 def reservas(client, apto, area=None, data=None):
     return [
-        r for r in client.get(f"/apartamentos/{apto}/reservas").json()
+        r
+        for r in client.get(f"/apartamentos/{apto}/reservas").json()
         if (area is None or r["area"] == area) and (data is None or r["data"] == data)
     ]
 
@@ -173,5 +174,7 @@ async def test_aprovacoes_simultaneas_so_uma_reserva(sessoes_db):
         assert [r.status_code for r in respostas] == [200, 200]
         total = 0
         for apto in ("101", "201"):
-            total += len([x for x in (await c.get(f"/apartamentos/{apto}/reservas")).json() if x["data"] == "2030-05-11"])
+            total += len(
+                [x for x in (await c.get(f"/apartamentos/{apto}/reservas")).json() if x["data"] == "2030-05-11"]
+            )
         assert total == 1

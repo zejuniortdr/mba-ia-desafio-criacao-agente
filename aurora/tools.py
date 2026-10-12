@@ -14,7 +14,7 @@ from aurora import db
 REGULAMENTO = (db.DADOS / "regulamento.md").read_text(encoding="utf-8")
 _CAPITULOS = {
     m.group(1): m.group(0).strip()
-    for m in re.finditer(r"^## Capítulo ([IVXLC]+):.*?(?=^## |\Z)", REGULAMENTO, re.M | re.S)
+    for m in re.finditer(r"^## Capítulo ([IVXLC]+):.*?(?=^## |\Z)", REGULAMENTO, re.MULTILINE | re.DOTALL)
 }
 
 
@@ -49,11 +49,18 @@ def listar_minhas_reservas(tool_context: ToolContext) -> dict:
     return {"reservas": db.listar_reservas(_apartamento(tool_context))}
 
 
+def _taxa(area: str) -> float:
+    dados = db.area(area)
+    if dados is None:
+        raise ValueError(f"área inválida: {area}")
+    return dados["taxa"]
+
+
 def precisa_confirmar_reserva(area: str, data: str, tool_context: ToolContext) -> bool:
     """Garantia 1: só reserva com taxa e data livre gera cobrança, logo só ela pede confirmação."""
     if _validar(area, data):
         return False
-    return db.area(area)["taxa"] > 0 and db.data_livre(area, data)
+    return _taxa(area) > 0 and db.data_livre(area, data)
 
 
 def reservar_area(area: str, data: str, tool_context: ToolContext) -> dict:
@@ -68,7 +75,7 @@ def reservar_area(area: str, data: str, tool_context: ToolContext) -> dict:
     codigo = db.criar_reserva(_apartamento(tool_context), area, data)
     if codigo is None:
         return {"status": "ocupada", "mensagem": "A área já está reservada nessa data."}
-    return {"status": "reservada", "codigo": codigo, "area": area, "data": data, "taxa": db.area(area)["taxa"]}
+    return {"status": "reservada", "codigo": codigo, "area": area, "data": data, "taxa": _taxa(area)}
 
 
 def cancelar_reserva(area: str, data: str, tool_context: ToolContext) -> dict:

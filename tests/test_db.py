@@ -17,9 +17,7 @@ def test_comando_restaurar_recria_dados_e_apaga_sessoes(tmp_path, monkeypatch):
 
 
 def test_restaurar_carrega_dados_iniciais():
-    assert db.listar_reservas("101") == [
-        {"codigo": "RSV-1377", "area": "quadra", "data": "2030-03-09"}
-    ]
+    assert db.listar_reservas("101") == [{"codigo": "RSV-1377", "area": "quadra", "data": "2030-03-09"}]
     assert db.listar_visitantes("302") == [{"nome": "Marina Duarte", "data": "2030-03-16"}]
 
 

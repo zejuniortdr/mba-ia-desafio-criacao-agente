@@ -22,3 +22,6 @@ testpaths = ["tests"]
 pythonpath = ["."]
 markers = ["e2e: chama o Gemini real (requer GOOGLE_API_KEY)"]
 addopts = "-m 'not e2e'"
+
+[tool.ruff]
+line-length = 120

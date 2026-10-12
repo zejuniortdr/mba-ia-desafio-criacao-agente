@@ -7,7 +7,7 @@ Usa só as tools que o agente atual tem; sem a tool, transfere para o especialis
 """
 
 import json
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 from google.adk.models.base_llm import BaseLlm
 from google.adk.models.llm_request import LlmRequest

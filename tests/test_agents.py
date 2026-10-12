@@ -45,8 +45,6 @@ def test_principal_nao_recebe_regulamento_nas_instrucoes():
 
 
 def test_tools_que_cobram_ou_liberam_acesso_pedem_confirmacao():
-    por_nome = {
-        t.name: t for a in _agentes(RAIZ) for t in a.tools if isinstance(t, FunctionTool)
-    }
+    por_nome = {t.name: t for a in _agentes(RAIZ) for t in a.tools if isinstance(t, FunctionTool)}
     assert por_nome["reservar_area"]._require_confirmation is tools.precisa_confirmar_reserva
     assert por_nome["autorizar_visitante"]._require_confirmation is True
