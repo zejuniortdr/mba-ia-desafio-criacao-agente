@@ -25,7 +25,10 @@ def _apartamento(tool_context: ToolContext) -> str:
 def _validar(area: str | None, data: str) -> str | None:
     if area is not None and db.area(area) is None:
         return "Área inválida. Use salao-de-festas, churrasqueira ou quadra."
+    # Formato estrito: fromisoformat sozinho aceita "20300420", que não colidiria com "2030-04-20" no índice único.
     try:
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", data):
+            raise ValueError(data)
         date.fromisoformat(data)
     except ValueError:
         return "Data inválida. Use o formato AAAA-MM-DD."
@@ -72,6 +75,12 @@ def reservar_area(area: str, data: str, tool_context: ToolContext) -> dict:
     """
     if erro := _validar(area, data):
         return {"erro": erro}
+    # Garantia 1: cobrança nunca grava sem aprovação, mesmo se a agenda mudou depois de precisa_confirmar_reserva.
+    confirmacao = tool_context.tool_confirmation
+    if _taxa(area) > 0 and not (confirmacao and confirmacao.confirmed):
+        if not db.data_livre(area, data):
+            return {"status": "ocupada", "mensagem": "A área já está reservada nessa data."}
+        return {"status": "nao_confirmada", "mensagem": "A agenda mudou. Peça a reserva de novo para aprovar a taxa."}
     codigo = db.criar_reserva(_apartamento(tool_context), area, data)
     if codigo is None:
         return {"status": "ocupada", "mensagem": "A área já está reservada nessa data."}

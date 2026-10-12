@@ -3,9 +3,10 @@ from types import SimpleNamespace
 from aurora import db, tools
 
 
-def ctx(apartamento="101"):
-    # ponytail: as tools só usam tool_context.state; o fluxo real com ToolContext está em test_api.py.
-    return SimpleNamespace(state={"apartamento": apartamento})
+def ctx(apartamento="101", confirmado=None):
+    # ponytail: as tools só usam state e tool_confirmation; o fluxo real com ToolContext está em test_api.py.
+    confirmacao = None if confirmado is None else SimpleNamespace(confirmed=confirmado)
+    return SimpleNamespace(state={"apartamento": apartamento}, tool_confirmation=confirmacao)
 
 
 def test_listar_minhas_reservas_usa_apartamento_da_sessao():
@@ -78,3 +79,18 @@ def test_indice_do_regulamento_tem_so_titulos():
     indice = tools.indice_regulamento()
     assert "IV: Piscina" in indice
     assert "9h" not in indice
+
+
+def test_data_fora_do_formato_estrito_vira_erro():
+    for data in ("20300420", "2030-W16-6", "2030-04-20T10:00"):
+        assert "erro" in tools.reservar_area("quadra", data, ctx())
+        assert "erro" in tools.autorizar_visitante("Joana", data, ctx())
+        assert tools.precisa_confirmar_reserva("salao-de-festas", data, ctx()) is False
+    assert db.listar_reservas("101") == [{"codigo": "RSV-1377", "area": "quadra", "data": "2030-03-09"}]
+
+
+def test_area_com_taxa_nao_grava_sem_confirmacao_aprovada():
+    r = tools.reservar_area("salao-de-festas", "2030-04-20", ctx())
+    assert r["status"] == "nao_confirmada"
+    assert db.listar_reservas("101") == [{"codigo": "RSV-1377", "area": "quadra", "data": "2030-03-09"}]
+    assert tools.reservar_area("salao-de-festas", "2030-04-20", ctx(confirmado=True))["status"] == "reservada"
