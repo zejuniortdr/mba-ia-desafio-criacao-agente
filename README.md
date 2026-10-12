@@ -34,7 +34,8 @@ Decisões que valem para todos:
 ### 1. Cobrança ou acesso só com confirmação
 
 - [aurora/agents.py#L56](aurora/agents.py#L56): `FunctionTool(reservar_area, require_confirmation=precisa_confirmar_reserva)`.
-- [aurora/tools.py#L59](aurora/tools.py#L59): `precisa_confirmar_reserva` devolve `True` só quando a área tem taxa maior que zero e a data está livre. Quadra (taxa 0) não pede confirmação; data ocupada também não, porque não há o que cobrar.
+- [aurora/tools.py#L62](aurora/tools.py#L62): `precisa_confirmar_reserva` devolve `True` só quando a área tem taxa maior que zero e a data está livre. Quadra (taxa 0) não pede confirmação; data ocupada também não, porque não há o que cobrar.
+- [aurora/tools.py#L78](aurora/tools.py#L78): a própria `reservar_area` recusa gravar área com taxa se a chamada não traz uma confirmação aprovada. Isso cobre a corrida em que a data estava ocupada (sem pedido de confirmação) e foi liberada antes da gravação.
 - [aurora/agents.py#L71](aurora/agents.py#L71): `autorizar_visitante` com `require_confirmation=True`, sempre.
 - [aurora/api.py#L39](aurora/api.py#L39): `confirmacoes_pendentes` lê os eventos da sessão e lista cada `adk_request_confirmation` que ainda não tem `FunctionResponse`. `detalhes` são os argumentos da chamada original.
 - [aurora/api.py#L95](aurora/api.py#L95): a rota de confirmações só aceita um `id` dessa lista; qualquer outro, inclusive um já respondido, recebe `409` antes de chegar ao Runner ([aurora/api.py#L98](aurora/api.py#L98)). Um `id` válido vira um `FunctionResponse` com `{"confirmed": true|false}` enviado ao Runner.
@@ -61,8 +62,8 @@ Por que não depende do modelo: o estado mora em arquivo, não em memória do pr
 ### 4. O regulamento é consultado, não carregado
 
 - [aurora/tools.py#L15](aurora/tools.py#L15): o regulamento é dividido por `## Capítulo` em 14 blocos.
-- [aurora/tools.py#L120](aurora/tools.py#L120): `consultar_regulamento(capitulo)` devolve um único capítulo.
-- [aurora/tools.py#L115](aurora/tools.py#L115): a instrução do especialista leva só os títulos dos capítulos.
+- [aurora/tools.py#L129](aurora/tools.py#L129): `consultar_regulamento(capitulo)` devolve um único capítulo.
+- [aurora/tools.py#L124](aurora/tools.py#L124): a instrução do especialista leva só os títulos dos capítulos.
 - [aurora/agents.py#L74-L99](aurora/agents.py#L74-L99): o especialista é um `AgentTool`. A chamada da tool e o texto do capítulo ficam na sessão interna dele; a sessão do morador recebe a resposta final.
 - O agente principal não tem o regulamento na instrução; [tests/test_agents.py](tests/test_agents.py) confere isso.
 
@@ -73,6 +74,8 @@ Por que não depende do modelo: o modelo pode pedir qualquer capítulo, mas a to
 - [aurora/db.py#L23](aurora/db.py#L23): `CREATE UNIQUE INDEX ux_reserva_ativa ON reservas(area, data) WHERE cancelada = 0`.
 - [aurora/db.py#L90-L105](aurora/db.py#L90-L105): `criar_reserva` faz o `INSERT` direto. Se o índice recusar, captura o `IntegrityError` e devolve `None`; a tool responde "A área já está reservada nessa data" e a API responde `200`.
 - Cancelar marca `cancelada = 1` em vez de apagar a linha ([aurora/db.py#L114](aurora/db.py#L114)). A data volta a ficar livre e o código antigo continua na tabela, com `PRIMARY KEY`, então nunca é reutilizado. Códigos novos são `RSV-` mais 8 caracteres hexadecimais de `uuid4` ([aurora/db.py#L94](aurora/db.py#L94)).
+
+As tools aceitam data só no formato estrito AAAA-MM-DD ([aurora/tools.py#L28](aurora/tools.py#L28)). Sem isso, `20300420` passaria pela validação e não colidiria com `2030-04-20` no índice.
 
 Por que não depende do modelo: a exclusividade é do SQLite no instante da gravação. A conferência de agenda feita antes (em `precisa_confirmar_reserva`) só evita pedir confirmação inútil; quem garante é o índice. O teste `test_reservas_simultaneas_so_uma_vence` dispara 8 threads ao mesmo tempo e só uma grava.
 
@@ -96,7 +99,7 @@ uv sync
 cp .env.example .env   # preencha GOOGLE_API_KEY e GOOGLE_GENAI_USE_VERTEXAI=FALSE
 ```
 
-Restaurar os dados iniciais (recria reservas e visitantes a partir de `dados/` e apaga as sessões):
+Restaurar os dados iniciais (recria reservas e visitantes a partir de `dados/` e apaga as sessões). Pare a API antes, porque o comando apaga o arquivo de sessões que ela mantém aberto:
 
 ```bash
 uv run python -m aurora.db restaurar
