@@ -19,5 +19,6 @@ dev = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+pythonpath = ["."]
 markers = ["e2e: chama o Gemini real (requer GOOGLE_API_KEY)"]
 addopts = "-m 'not e2e'"
