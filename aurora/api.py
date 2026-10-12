@@ -51,7 +51,7 @@ def confirmacoes_pendentes(events: list[Event]) -> list[dict]:
 
 
 def criar_api(model: str | BaseLlm | None = None, sessoes_db: str | None = None) -> FastAPI:
-    sessoes_db = sessoes_db or os.environ.get("AURORA_SESSOES_DB", "var/sessoes.db")
+    sessoes_db = sessoes_db or str(db.SESSOES_DB)
     os.makedirs(os.path.dirname(sessoes_db) or ".", exist_ok=True)
     # Garantia 3: eventos e state das sessões persistidos em SQLite, sobrevivem ao reinício.
     sessoes = SqliteSessionService(db_path=sessoes_db)

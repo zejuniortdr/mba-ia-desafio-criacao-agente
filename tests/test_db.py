@@ -1,6 +1,19 @@
+import os
+import subprocess
+import sys
 import threading
 
 from aurora import db
+
+
+def test_comando_restaurar_recria_dados_e_apaga_sessoes(tmp_path, monkeypatch):
+    sessoes = tmp_path / "sessoes.db"
+    sessoes.write_text("x")
+    env = {**os.environ, "AURORA_DB": str(tmp_path / "a.db"), "AURORA_SESSOES_DB": str(sessoes)}
+    subprocess.run([sys.executable, "-m", "aurora.db", "restaurar"], env=env, check=True, capture_output=True)
+    assert not sessoes.exists()
+    monkeypatch.setattr(db, "DB_PATH", tmp_path / "a.db")
+    assert [r["codigo"] for r in db.listar_reservas("302")] == ["RSV-4821"]
 
 
 def test_restaurar_carrega_dados_iniciais():

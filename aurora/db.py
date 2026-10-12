@@ -9,6 +9,7 @@ from pathlib import Path
 
 DADOS = Path(__file__).resolve().parent.parent / "dados"
 DB_PATH = Path(os.environ.get("AURORA_DB", "var/aurora.db"))
+SESSOES_DB = Path(os.environ.get("AURORA_SESSOES_DB", "var/sessoes.db"))
 
 SCHEMA = """
 CREATE TABLE reservas (
@@ -125,4 +126,6 @@ def autorizar_visitante(apartamento: str, nome: str, data: str) -> None:
 
 if __name__ == "__main__" and sys.argv[1:] == ["restaurar"]:
     restaurar()
-    print(f"dados restaurados em {DB_PATH}")
+    for sufixo in ("", "-wal", "-shm"):
+        Path(f"{SESSOES_DB}{sufixo}").unlink(missing_ok=True)
+    print(f"dados restaurados em {DB_PATH}; sessões apagadas")
