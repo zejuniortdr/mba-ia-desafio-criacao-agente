@@ -194,3 +194,19 @@ async def test_aprovacoes_simultaneas_so_uma_reserva(sessoes_db):
                 [x for x in (await c.get(f"/apartamentos/{apto}/reservas")).json() if x["data"] == "2030-05-11"]
             )
         assert total == 1
+
+
+def test_openapi_documenta_respostas_e_erros(client):
+    paths = client.get("/openapi.json").json()["paths"]
+    for caminho, metodos in paths.items():
+        for metodo, op in metodos.items():
+            sucesso = op["responses"]["201" if caminho == "/sessoes" else "200"]
+            assert sucesso["content"]["application/json"]["schema"], f"{metodo} {caminho} sem schema"
+            if caminho.startswith("/sessoes/"):
+                assert "404" in op["responses"], f"{metodo} {caminho} sem 404"
+    assert "409" in paths["/sessoes/{session_id}/confirmacoes"]["post"]["responses"]
+
+
+def test_openapi_versionado_esta_atualizado(client):
+    versionado = json.loads((db.DADOS.parent / "docs" / "openapi.json").read_text(encoding="utf-8"))
+    assert versionado == client.get("/openapi.json").json(), "rode make openapi"

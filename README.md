@@ -37,14 +37,14 @@ Decisões que valem para todos:
 - [aurora/tools.py#L62](aurora/tools.py#L62): `precisa_confirmar_reserva` devolve `True` só quando a área tem taxa maior que zero e a data está livre. Quadra (taxa 0) não pede confirmação; data ocupada também não, porque não há o que cobrar.
 - [aurora/tools.py#L78](aurora/tools.py#L78): a própria `reservar_area` recusa gravar área com taxa se a chamada não traz uma confirmação aprovada. Isso cobre a corrida em que a data estava ocupada (sem pedido de confirmação) e foi liberada antes da gravação.
 - [aurora/agents.py#L71](aurora/agents.py#L71): `autorizar_visitante` com `require_confirmation=True`, sempre.
-- [aurora/api.py#L39](aurora/api.py#L39): `confirmacoes_pendentes` lê os eventos da sessão e lista cada `adk_request_confirmation` que ainda não tem `FunctionResponse`. `detalhes` são os argumentos da chamada original.
-- [aurora/api.py#L95](aurora/api.py#L95): a rota de confirmações só aceita um `id` dessa lista; qualquer outro, inclusive um já respondido, recebe `409` antes de chegar ao Runner ([aurora/api.py#L98](aurora/api.py#L98)). Um `id` válido vira um `FunctionResponse` com `{"confirmed": true|false}` enviado ao Runner.
+- [aurora/api.py#L77](aurora/api.py#L77): `confirmacoes_pendentes` lê os eventos da sessão e lista cada `adk_request_confirmation` que ainda não tem `FunctionResponse`. `detalhes` são os argumentos da chamada original.
+- [aurora/api.py#L157](aurora/api.py#L157): a rota de confirmações só aceita um `id` dessa lista; qualquer outro, inclusive um já respondido, recebe `409` antes de chegar ao Runner ([aurora/api.py#L160](aurora/api.py#L160)). Um `id` válido vira um `FunctionResponse` com `{"confirmed": true|false}` enviado ao Runner.
 
 Por que não depende do modelo: a pausa acontece dentro do `FunctionTool` do ADK antes de a função rodar. O modelo pode dizer que o morador já confirmou; a tool continua sem executar até chegar um `FunctionResponse`, e só a rota HTTP cria um. Depois de respondido, o `id` sai da lista de pendentes, então reenviar não executa de novo.
 
 ### 2. Cada sessão pertence a um apartamento
 
-- [aurora/api.py#L83-L85](aurora/api.py#L83-L85): o apartamento entra no `state` da sessão uma vez, na criação. Nenhuma rota altera esse valor depois.
+- [aurora/api.py#L131-L133](aurora/api.py#L131-L133): o apartamento entra no `state` da sessão uma vez, na criação. Nenhuma rota altera esse valor depois.
 - [aurora/tools.py#L21](aurora/tools.py#L21): `_apartamento(tool_context)` lê `tool_context.state["apartamento"]`. Nenhuma tool tem parâmetro `apartamento`; o teste [tests/test_agents.py](tests/test_agents.py) percorre todos os agentes e falha se alguma tiver.
 - [aurora/db.py#L114](aurora/db.py#L114): cancelar filtra por `apartamento = ?`. Pedir o cancelamento de uma reserva alheia devolve "Você não tem reserva dessa área nessa data", sem código nem dono.
 - `verificar_disponibilidade` e `reservar_area` devolvem só livre/ocupada, nunca de quem é a reserva.
@@ -53,7 +53,7 @@ Por que não depende do modelo: o modelo não tem como escolher o apartamento. E
 
 ### 3. Nada se perde no reinício
 
-- [aurora/api.py#L59-L60](aurora/api.py#L59-L60): `SqliteSessionService(db_path="var/sessoes.db")` persiste sessões, `state` e eventos.
+- [aurora/api.py#L97-L98](aurora/api.py#L97-L98): `SqliteSessionService(db_path="var/sessoes.db")` persiste sessões, `state` e eventos.
 - [aurora/db.py](aurora/db.py): reservas e visitantes em `var/aurora.db`.
 - A pendência de confirmação é derivada dos eventos persistidos, então sobrevive ao reinício e pode ser aprovada depois dele. Isso está coberto em [tests/test_api.py](tests/test_api.py) (`test_reinicio_preserva_eventos_e_retoma_confirmacao`) e foi conferido com o uvicorn real, parando com SIGINT e subindo de novo.
 

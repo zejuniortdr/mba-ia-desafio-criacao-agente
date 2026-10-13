@@ -1,7 +1,7 @@
 PORT ?= 8000
 RUFF := uvx ruff@0.17.0
 
-.PHONY: help install run restaurar test e2e lint format typecheck check
+.PHONY: help install run restaurar test e2e lint format typecheck check openapi
 
 help: ## Lista os comandos
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-10s %s\n", $$1, $$2}'
@@ -33,3 +33,6 @@ typecheck: ## mypy, como no CI
 	uv run --with mypy==2.4.0 mypy aurora --ignore-missing-imports
 
 check: lint typecheck test ## Tudo que o CI roda
+
+openapi: ## Exporta a especificação OpenAPI para docs/openapi.json (rode após mudar rotas)
+	uv run python -c "import json; from aurora.api import criar_api; print(json.dumps(criar_api().openapi(), ensure_ascii=False, indent=2))" > docs/openapi.json

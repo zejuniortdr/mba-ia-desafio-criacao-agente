@@ -2,7 +2,7 @@
 
 A API recebe e devolve JSON em `http://localhost:8000`. Para subir, restaurar os dados e configurar o `.env`, veja a seção Como rodar do [README](../README.md) ou rode `make help`.
 
-Com a API no ar, o FastAPI também serve a especificação interativa em `http://localhost:8000/docs`.
+Com a API no ar, a especificação interativa fica em `http://localhost:8000/docs` (Swagger UI, com "Try it out") e em `http://localhost:8000/redoc`. Sem subir a API, a mesma especificação está em [openapi.json](openapi.json); abra no [Swagger Editor](https://editor.swagger.io) ou em qualquer visualizador OpenAPI. Depois de mudar uma rota, rode `make openapi`: um teste falha se o arquivo ficar desatualizado.
 
 ## Fluxo básico
 
