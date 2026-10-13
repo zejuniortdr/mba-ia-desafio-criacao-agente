@@ -94,34 +94,34 @@ Variáveis do `.env`:
 | `GEMINI_MODEL` | não | `gemini-3.8-flash` |
 | `GEMINI_MODEL_FALLBACK` | não | `gemini-3.5-flash` |
 
-Instalar e configurar:
+Instalar e configurar (roda `uv sync` e cria o `.env` a partir do `.env.example`, se faltar):
 
 ```bash
-uv sync
-cp .env.example .env   # preencha GOOGLE_API_KEY e GOOGLE_GENAI_USE_VERTEXAI=FALSE
+make install   # depois preencha GOOGLE_API_KEY no .env
 ```
 
 Restaurar os dados iniciais (recria reservas e visitantes a partir de `dados/` e apaga as sessões). Pare a API antes, porque o comando apaga o arquivo de sessões que ela mantém aberto:
 
 ```bash
-uv run python -m aurora.db restaurar
+make restaurar
 ```
 
-Subir a API em `http://localhost:8000`:
+Subir a API em `http://localhost:8000` (outra porta: `make run PORT=8010`):
 
 ```bash
-uv run --env-file .env uvicorn --factory aurora.api:criar_api --port 8000
+make run
 ```
 
 Rotas, exemplos com `curl` e o fluxo de confirmação estão em [docs/API.md](docs/API.md).
 
-Testes:
+Testes e qualidade:
 
 ```bash
-uv run pytest                               # suíte sem LLM (modelo falso), não gasta cota
-uv run --env-file .env pytest -m e2e -s     # fluxo do avaliador com o Gemini real; mostra chamadas e tokens
+make test    # suíte sem LLM (modelo falso), não gasta cota
+make e2e     # fluxo do avaliador com o Gemini real; mostra chamadas e tokens
+make check   # lint, tipos e testes, como o CI
 ```
 
-Os mesmos comandos existem no `Makefile` (`make help` lista todos): `make install`, `make restaurar`, `make run`, `make test`, `make e2e` e `make check`, que roda lint, tipos e testes como o CI.
+`make help` lista todos os comandos; o comando real de cada um está no [Makefile](Makefile).
 
 Os testes `e2e` ficam fora da execução padrão (`addopts = "-m 'not e2e'"` no `pyproject.toml`) e são pulados sem `GOOGLE_API_KEY`. No plano gratuito do Gemini o limite é de 20 requisições por dia por modelo, o que não basta para o fluxo completo.
