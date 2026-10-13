@@ -111,11 +111,15 @@ Subir a API em `http://localhost:8000`:
 uv run --env-file .env uvicorn --factory aurora.api:criar_api --port 8000
 ```
 
+Rotas, exemplos com `curl` e o fluxo de confirmação estão em [docs/API.md](docs/API.md).
+
 Testes:
 
 ```bash
 uv run pytest                               # suíte sem LLM (modelo falso), não gasta cota
 uv run --env-file .env pytest -m e2e -s     # fluxo do avaliador com o Gemini real; mostra chamadas e tokens
 ```
+
+Os mesmos comandos existem no `Makefile` (`make help` lista todos): `make install`, `make restaurar`, `make run`, `make test`, `make e2e` e `make check`, que roda lint, tipos e testes como o CI.
 
 Os testes `e2e` ficam fora da execução padrão (`addopts = "-m 'not e2e'"` no `pyproject.toml`) e são pulados sem `GOOGLE_API_KEY`. No plano gratuito do Gemini o limite é de 20 requisições por dia por modelo, o que não basta para o fluxo completo.
