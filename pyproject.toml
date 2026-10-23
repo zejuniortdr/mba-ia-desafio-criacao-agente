@@ -1,0 +1,27 @@
+[project]
+name = "aurora"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "aiosqlite>=0.22.1",
+    "fastapi>=0.141.1",
+    "google-adk==2.11.0",
+    "uvicorn>=0.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = ["e2e: chama o Gemini real (requer GOOGLE_API_KEY)"]
+addopts = "-m 'not e2e'"
+
+[tool.ruff]
+line-length = 120
